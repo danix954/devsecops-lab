@@ -2,7 +2,8 @@ name: DevSecOps Pipeline
 on: [push, pull_request]
 
 jobs:
-  build:
+
+  Build:
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -17,7 +18,7 @@ jobs:
           name: docker-image
           path: image.tar
 
-  sast:
+  SAST:
     name: SAST
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +31,7 @@ jobs:
             p/secrets
             p/owasp-top-ten
 
-  sca:
+  SCA:
     name: SCA
     runs-on: ubuntu-latest
     steps:
@@ -52,7 +53,7 @@ jobs:
           name: npm-audit
           path: src/audit.json
 
-  secrets:
+  Secrets:
     name: Secrets
     runs-on: ubuntu-latest
     steps:
@@ -64,10 +65,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  container-scan:
+  Container_Scan:
     name: Container Scan
     runs-on: ubuntu-latest
-    needs: build
+    needs: Build
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -82,10 +83,10 @@ jobs:
           exit-code: '1'
           severity: 'CRITICAL'
 
-  report:
+  Report:
     name: Report
     runs-on: ubuntu-latest
-    needs: [sast, sca, secrets, container-scan]
+    needs: [SAST, SCA, Secrets, Container_Scan]
     if: always()
     steps:
       - name: Generate JSON Report
@@ -96,10 +97,10 @@ jobs:
             "repository": "${{ github.repository }}",
             "commit": "${{ github.sha }}",
             "results": {
-              "sast": {"status": "${{ needs.sast.result }}"},
-              "sca": {"status": "${{ needs.sca.result }}"},
-              "secrets": {"status": "${{ needs.secrets.result }}"},
-              "container_scan": {"status": "${{ needs.container-scan.result }}"}
+              "SAST": {"status": "${{ needs.SAST.result }}"},
+              "SCA": {"status": "${{ needs.SCA.result }}"},
+              "Secrets": {"status": "${{ needs.Secrets.result }}"},
+              "Container_Scan": {"status": "${{ needs.Container_Scan.result }}"}
             }
           }
           EOF
@@ -111,14 +112,14 @@ jobs:
       - name: Summary
         run: |
           echo "## Security Scan Complete" >> $GITHUB_STEP_SUMMARY
-          echo "- SAST: ${{ needs.sast.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- SCA: ${{ needs.sca.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Secrets: ${{ needs.secrets.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Container Scan: ${{ needs.container-scan.result }}" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ needs.sast.result }}" == "failure" ]] || \
-             [[ "${{ needs.sca.result }}" == "failure" ]] || \
-             [[ "${{ needs.secrets.result }}" == "failure" ]] || \
-             [[ "${{ needs.container-scan.result }}" == "failure" ]]; then
+          echo "- SAST: ${{ needs.SAST.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- SCA: ${{ needs.SCA.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Secrets: ${{ needs.Secrets.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Container Scan: ${{ needs.Container_Scan.result }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.SAST.result }}" == "failure" ]] || \
+             [[ "${{ needs.SCA.result }}" == "failure" ]] || \
+             [[ "${{ needs.Secrets.result }}" == "failure" ]] || \
+             [[ "${{ needs.Container_Scan.result }}" == "failure" ]]; then
              echo "Security issues detected!" >> $GITHUB_STEP_SUMMARY
              exit 1
           else
